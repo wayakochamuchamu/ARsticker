@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AR sticker</title>
+
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      position: relative;
+    }
+
+    video {
+      width: 100%;
+      max-width: 500px;
+    }
+
+    #overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 200px;
+      height: 200px;
+      transform: translate(-50%, -50%);
+      border: 3px solid rgb(0, 255, 50);
+      pointer-events: none;
+    }
+  </style>
+</head>
+
+<body>
+
+<video id="video" autoplay playsinline></video>
+<div id="overlay"></div>
+
+<canvas id="canvas" style="display:none;"></canvas>
+
+<script>
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+
+let detected = false;
+let initialized = false;
+
+async function startCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment" },
+      audio: false
+    });
+    video.srcObject = stream;
+  } catch (err) {
+    alert("カメラの許可が必要です");
+  }
+}
+
+startCamera();
+
+// 自動検出
+setInterval(() => {
+  if (detected) return;
+  if (video.videoWidth === 0) return;
+
+  const ctx = canvas.getContext('2d');
+
+  // サイズ設定
+  if (!initialized) {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    initialized = true;
+  }
+
+  ctx.drawImage(video, 0, 0);
+
+  // 中央切り出し
+  const size = 200;
+  const x = canvas.width / 2 - size / 2;
+  const y = canvas.height / 2 - size / 2;
+
+  const imageData = ctx.getImageData(x, y, size, size);
+
+  let greenCount = 0;
+
+  for (let i = 0; i < imageData.data.length; i += 4) {
+    const r = imageData.data[i];
+    const g = imageData.data[i + 1];
+    const b = imageData.data[i + 2];
+
+    if (g > r && g > b && g > 100) {
+      greenCount++;
+    }
+  }
+
+  const ratio = greenCount / (imageData.data.length / 4);
+
+  console.log("緑割合:", ratio);
+
+  const isSticker = ratio > 0.5;
+
+  if (isSticker) {
+    detected = true;
+
+    const hour = new Date().getHours();
+    let url = "";
+
+    if (hour >= 5 && hour < 12) {
+      url = "https://drive.google.com/file/d/1SQvzRiDkFIAfRWs-Hs9-hx9uoobVc4Br/view?usp=share_link";
+    } else if (hour >= 12 && hour < 18) {
+      url = "https://drive.google.com/file/d/19BVuR38WDYdloYCrEzgdFYySVH7fvRPr/view?usp=share_link";
+    } else {
+      url = "https://drive.google.com/file/d/1EU2hMlyIVVtI3vnvnhBA16okbLgQDTVr/view?usp=share_link";
+    }
+
+    alert(`あった！`);
+
+    window.location.href = url;
+  }
+
+}, 1200); 
+</script>
+
+</body>
+</html>
